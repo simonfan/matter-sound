@@ -3,8 +3,11 @@ const Tone = require('tone')
 
 const scale = require('d3-scale')
 
+Tone.Master.volume.value = -30
+Tone.Master.mute = true
 
-// Tone.Master.mute = true
+let OVERALL_LIMITER = new Tone.Limiter(-6)
+OVERALL_LIMITER.toMaster()
 
 /**
  * Matter submodules
@@ -41,9 +44,9 @@ function setup(options) {
     throw new Error('CANVAS_HEIGHT is required')
   }
 
-  Matter.use(new MatterSound({
+  window.matterSound = new MatterSound()
 
-  }))
+  Matter.use(matterSound)
 
   // create engine
   let engine = Engine.create({
@@ -142,7 +145,9 @@ function setup(options) {
       frictionStatic: 0,
 
       render: {
-        fillStyle: 'darkred',
+        fillStyle: 'transparent',
+        strokeStyle: 'white',
+        lineWidth: 4,
       },
       plugin: {
         sound: {
@@ -150,6 +155,7 @@ function setup(options) {
             audioNode: () => {
               let synth = new Tone.PolySynth(4, Tone.Synth)
               synth.volume.value = 5
+
               synth.triggerAttack(['C3', 'E3', 'G3', 'B3'])
 
               return synth
@@ -167,13 +173,15 @@ function setup(options) {
       frictionStatic: 0,
 
       render: {
-        fillStyle: 'yellow',
+        fillStyle: 'white',
       },
       plugin: {
         sound: {
           source: {
             audioNode: () => {
-              return (new Tone.PolySynth(4, Tone.Synth)).triggerAttack(['C4', 'E4', 'G4', 'B4'])
+              let synth = new Tone.PolySynth(4, Tone.Synth)
+              synth.triggerAttack(['C4', 'E4', 'G4', 'B4'])
+              return synth
             },
           }
         },
@@ -182,7 +190,7 @@ function setup(options) {
   ]
 
   let effects = [
-    Bodies.circle(CANVAS_WIDTH * 1/2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * .40, {
+    Bodies.circle(CANVAS_WIDTH * 2/5, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * .40, {
       label: 'tremolo',
       isSensor: true,
       isStatic: true,
@@ -198,16 +206,34 @@ function setup(options) {
               return new Tone.Tremolo().start()
             },
 
-            onUpdateConcentricity: (data) => {
-              // console.log('mic onUpdateConcentricity', data.concentricity)
+            bgColorScale: scale.scaleLinear().domain([0, 1]).range(['black', 'darkred']),
 
-              // let frequency = scale
-              //   .scaleThreshold()
-              //   .domain([0, 1])
-              //   .range(['C1', 'D1', 'E1'])
+            onUpdateConcentricity: function (data) {
+              data.audioNode.depth.value = data.concentricity
+            },
+          }
+        }
+      }
+    }),
+    Bodies.circle(CANVAS_WIDTH * 3/5, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * .40, {
+      label: 'vibrato',
+      isSensor: true,
+      isStatic: true,
+      render: {
+        fillStyle: 'transparent',
+        strokeStyle: 'white',
+        lineWidth: 1,
+      },
+      plugin: {
+        sound: {
+          transform: {
+            audioNode: () => {
+              return new Tone.Vibrato()
+            },
 
-              // console.log(volume(data.concentricity))
+            bgColorScale: scale.scaleLinear().domain([0, 1]).range(['black', 'darkred']),
 
+            onUpdateConcentricity: function (data) {
               data.audioNode.depth.value = data.concentricity
             },
           }
@@ -230,12 +256,10 @@ function setup(options) {
         sound: {
           destination: {
             audioNode: () => {
-              return new Tone.Volume(-10).fan(waveformAudioNode, Tone.Master)
+              let volumeNode = new Tone.Volume(-20)
+              volumeNode.fan(waveformAudioNode, OVERALL_LIMITER)
+              return volumeNode
             },
-
-            // onEnterRange: (data) => {
-            //   console.log('mic onEnterRange', data)
-            // },
 
             onUpdateConcentricity: (data) => {
               // console.log('mic onUpdateConcentricity', data.concentricity)
@@ -245,19 +269,84 @@ function setup(options) {
                 .domain([0, 1])
                 .range([-20, 0])
 
-              // console.log(volume(data.concentricity))
-
               data.audioNode.volume.value = volume(data.concentricity)
             },
-
-            // onLeaveRange: (data) => {
-            //   console.log('mic onLeaveRange', data)
-            // }
           }
         }
       }
     }),
+
+    // Bodies.circle(CANVAS_WIDTH * 1/6, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * .15, {
+    //   label: 'mic-2',
+    //   isSensor: true,
+    //   isStatic: true,
+    //   render: {
+    //     fillStyle: 'transparent',
+    //     strokeStyle: 'white',
+    //     lineWidth: 1,
+    //   },
+    //   plugin: {
+    //     sound: {
+    //       destination: {
+    //         audioNode: () => {
+    //           let volumeNode = new Tone.Volume(-25)
+    //           volumeNode.fan(waveformAudioNode, OVERALL_LIMITER)
+    //           return volumeNode
+    //         },
+
+    //         onUpdateConcentricity: (data) => {
+
+    //           let volume = scale
+    //             .scaleLinear()
+    //             .domain([0, 1])
+    //             .range([-25, -10])
+
+    //           console.log('mic-2 onUpdateConcentricity', volume(data.concentricity))
+    //           data.audioNode.volume.value = volume(data.concentricity)
+    //         },
+    //       }
+    //     }
+    //   }
+    // }),
+
+
+    // Bodies.circle(CANVAS_WIDTH * 5/6, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * .15, {
+    //   label: 'mic-3',
+    //   isSensor: true,
+    //   isStatic: true,
+    //   render: {
+    //     fillStyle: 'transparent',
+    //     strokeStyle: 'white',
+    //     lineWidth: 1,
+    //   },
+    //   plugin: {
+    //     sound: {
+    //       destination: {
+    //         audioNode: () => {
+    //           let volumeNode = new Tone.Volume(-25)
+    //           volumeNode.fan(waveformAudioNode, OVERALL_LIMITER)
+    //           return volumeNode
+    //         },
+
+    //         onUpdateConcentricity: (data) => {
+    //           // console.log('mic onUpdateConcentricity', data.concentricity)
+
+    //           let volume = scale
+    //             .scaleLinear()
+    //             .domain([0, 1])
+    //             .range([-25, -10])
+
+    //           console.log('mic-3 onUpdateConcentricity', volume(data.concentricity))
+    //           data.audioNode.volume.value = volume(data.concentricity)
+    //         },
+    //       }
+    //     }
+    //   }
+    // }),
+
   ]
+
+  window.sources = sources
 
   World.add(engine.world, microphones)
   World.add(engine.world, effects)
@@ -290,6 +379,14 @@ function setup(options) {
   // keep the mouse in sync with rendering
   render.mouse = mouse;
 
+
+
+  setTimeout(() => {
+    Tone.Master.mute = false
+    Tone.Master.volume.rampTo(0)
+  }, 200)
+
+
   return {
   	engine: engine,
   	stop: () => {
@@ -303,4 +400,9 @@ setup({
   canvasWidth: window.innerWidth,
   canvasHeight: window.innerHeight,
   canvas: document.querySelector('canvas'),
+})
+
+window.addEventListener('beforeunload', (e) => {
+  // mute tone.js to prevent crackling
+  Tone.Master.mute = true
 })

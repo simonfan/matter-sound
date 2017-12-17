@@ -2,13 +2,15 @@ const Tone = require('tone')
 
 let waveform = new Tone.Waveform(1024)
 
+window.waveform = waveform
+
 module.exports = function () {
 	let canvas = document.querySelector('#waveform-canvas')
 	let context = canvas.getContext('2d')
 
 	let canvasWidth = window.innerWidth
 	let canvasHeight = window.innerHeight
-	
+
 	canvas.width = canvasWidth
 	canvas.height = canvasHeight
 
@@ -19,7 +21,7 @@ module.exports = function () {
 		context.lineJoin = 'round'
 		context.lineWidth = 2
 		context.strokeStyle = 'white'
-		context.moveTo(0, (values[0] / 255) * canvas.height)
+		context.moveTo(0, ((values[0] + 1) / 2) * canvas.height)
 		for (var i = 1, len = values.length; i < len; i++){
 			var val = (values[i] + 1) / 2
 			var x = canvas.width * (i / len)
