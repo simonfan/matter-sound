@@ -256,7 +256,7 @@ function setup(options) {
         sound: {
           destination: {
             audioNode: () => {
-              let volumeNode = new Tone.Volume(-20)
+              let volumeNode = new Tone.Volume()
               volumeNode.fan(waveformAudioNode, OVERALL_LIMITER)
               return volumeNode
             },
